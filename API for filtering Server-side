@@ -1,0 +1,119 @@
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+public class StudentController {
+
+    private static final String FILE_PATH = "student_data.csv";
+
+    @GetMapping("/api/students")
+    public ResponseEntity<StudentResponse> getFilteredStudents(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String filterBy,
+            @RequestParam(required = false) String filterValue
+    ) {
+        try {
+            List<Student> allStudents = loadStudentDetailsFromFile();
+
+            List<Student> filteredStudents = allStudents;
+            if (filterBy != null && filterValue != null) {
+                filteredStudents = allStudents.stream()
+                        .filter(student -> filterStudent(student, filterBy, filterValue))
+                        .collect(Collectors.toList());
+            }
+
+            int totalStudents = filteredStudents.size();
+
+            int startIndex = (page - 1) * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, totalStudents);
+
+            List<Student> paginatedStudents = filteredStudents.subList(startIndex, endIndex);
+
+            StudentResponse response = new StudentResponse(paginatedStudents, totalStudents, page, pageSize);
+            return ResponseEntity.ok(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new StudentResponse("Failed to load student details."));
+        }
+    }
+
+    private List<Student> loadStudentDetailsFromFile() throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
+        List<Student> students = new ArrayList<>();
+
+        // Implement parsing logic to convert lines into Student objects
+        // You can use a CSV parsing library or split the lines manually
+
+        // Add the parsed Student objects to the list
+        students.add(new Student("1", "John Doe", 95));
+        students.add(new Student("2", "Jane Smith", 88));
+        students.add(new Student("3", "David Johnson", 92));
+
+        // Return the list of Student objects
+        return students;
+    }
+
+    private boolean filterStudent(Student student, String filterBy, String filterValue) {
+        switch (filterBy) {
+            case "id":
+                return student.getId().equals(filterValue);
+            case "name":
+                return student.getName().toLowerCase().contains(filterValue.toLowerCase());
+            case "totalMarks":
+                int totalMarks = Integer.parseInt(filterValue);
+                return student.getTotalMarks() >= totalMarks;
+            // Add more cases for other filter criteria if needed
+            default:
+                return true; // Default to true if filterBy is not recognized
+        }
+    }
+}
+
+class Student {
+    private String id;
+    private String name;
+    private int totalMarks;
+
+    public Student(String id, String name, int totalMarks) {
+        this.id = id;
+        this.name = name;
+        this.totalMarks = totalMarks;
+    }
+
+    // Add getters and setters
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getTotalMarks() {
+        return totalMarks;
+    }
+
+    public void setTotalMarks(int totalMarks) {
+        this.totalMarks = totalMarks;
+    }
